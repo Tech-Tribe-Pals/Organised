@@ -1,0 +1,135 @@
+"use client";
+// import Link from "next/link";
+import Image from "next/image";
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [step, setStep] = useState<"email" | "password">("email");
+
+  // Esta función maneja el flujo inteligente
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Si estamos en el primer paso, solo validamos que haya un email y pasamos al siguiente
+    if (step === "email") {
+      if (email.includes("@")) {
+        setStep("password");
+      }
+      return;
+    }
+
+    // Si ya estamos en el paso de contraseña, intentamos Login o Registro
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      // Si el usuario no existe, Supabase devuelve este mensaje específico
+      if (signInError.message.includes("Invalid login credentials")) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (signUpError) {
+          alert(signUpError.message);
+        } else {
+          alert("¡Cuenta nueva! Te enviamos un correo de confirmación.");
+        }
+      } else {
+        alert(signInError.message);
+      }
+      return;
+    }
+
+    // Si no hubo error, al dashboard
+    window.location.href = "/dashboard";
+  };
+
+  return (
+    <main className="min-h-screen bg-[#0f0f0f] flex items-center justify-center relative overflow-hidden p-6">
+      {/* Cuadraditos verdes decorativos */}
+      <div className="absolute top-20 left-10 w-6 h-6 bg-green-500/20 border border-green-500/40 rounded-sm animate-pulse-slow"></div>
+      <div className="absolute bottom-40 right-20 w-8 h-8 bg-green-500/10 border border-green-500/20 rounded-sm"></div>
+      <div className="absolute top-1/2 left-1/4 w-4 h-4 bg-green-500/30 rounded-sm blur-sm"></div>
+
+      <div className="w-full max-w-[400px] z-10">
+        <div className="flex flex-col items-center mb-10">
+          {/* Avatar dinámico: Solo se vuelve "vívido" en el paso de contraseña */}
+          <div className={`w-32 h-32 rounded-full border-4 border-[#181818] overflow-hidden mb-4 shadow-2xl transition-all duration-500 ${step === 'password' ? 'scale-110 shadow-green-500/20' : 'grayscale opacity-50'}`}>
+            <Image
+              src="/avatar-placeholder.jpg"
+              alt="Profile"
+              width={128}
+              height={128}
+              className="object-cover"
+            />
+          </div>
+          <h2 className={`text-xl font-medium tracking-wide transition-colors ${step === 'password' ? 'text-white' : 'text-gray-500'}`}>
+            {step === 'password' ? 'Mitchell' : 'Organiseed'}
+          </h2>
+        </div>
+
+        <form onSubmit={handleAuth} className="space-y-6">
+          {/* Campo de Email */}
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-widest text-gray-500 ml-1">
+              Email
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              readOnly={step === "password"}
+              onChange={(e) => setEmail(e.target.value)}
+              className={`w-full bg-[#181818] border border-[#262626] rounded-md px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-all ${step === 'password' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              placeholder="tu@email.com"
+            />
+          </div>
+
+          {/* Campo de Contraseña: Solo aparece en el paso 2 */}
+          {step === "password" && (
+            <div className="space-y-2 animate-fade-in-up">
+              <label className="text-xs uppercase tracking-widest text-gray-500 ml-1">
+                Contraseña
+              </label>
+              <input
+                type="password"
+                autoFocus
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-[#181818] border border-[#262626] rounded-md px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-all"
+                placeholder="••••••••"
+              />
+              <button 
+                type="button"
+                onClick={() => setStep("email")}
+                className="text-[10px] text-gray-600 hover:text-green-500 block text-right mt-1 w-full text-right"
+              >
+                ¿No es tu cuenta? Cambiar email
+              </button>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-transparent border border-[#262626] hover:bg-white/5 text-gray-300 py-3 rounded-md transition-all font-medium mt-4 border-green-500/20"
+          >
+            {step === "email" ? "Continuar" : "Ingresar"}
+          </button>
+        </form>
+
+        <div className="mt-20 flex justify-center opacity-40">
+          <span className="font-bold text-2xl tracking-tighter">
+            Organi<span className="text-green-500">seed</span>
+          </span>
+        </div>
+      </div>
+    </main>
+  );
+}
