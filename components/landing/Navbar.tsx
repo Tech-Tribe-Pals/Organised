@@ -4,7 +4,7 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#121212]/80 backdrop-blur-md">
       <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-        
+
         {/* Logo e Iconos Izquierda */}
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
@@ -22,16 +22,16 @@ const Navbar = () => {
             <Link href="/" className="hover:text-white transition-colors">Inicio</Link>
             <Link href="#nosotros" className="hover:text-white transition-colors">Nosotros</Link>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
             >
               Iniciar sesión
             </Link>
-            <Link 
-              href="/signup" 
+            <Link
+              href="/signup"
               className="text-sm font-medium bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-md border border-white/10 transition-all"
             >
               Registrarse

@@ -1,16 +1,41 @@
-import React from "react";
+import { type TeamMember } from "@/lib/projects";
 
-const TeamSection = () => {
+interface Props {
+  pm?: TeamMember;
+  team: TeamMember[];
+}
+
+const TeamSection = ({ pm, team }: Props) => {
+  // Combine PM and Team into one array to render
+  const allMembers = [];
+  if (pm) {
+    allMembers.push({ ...pm, role: "PM" });
+  }
+  team.forEach(m => {
+    allMembers.push({ ...m, role: "Miembro" });
+  });
+
   return (
-    <div className="bg-card-bg border border-card-border rounded-xl p-6">
-      <h3 className="text-lg font-bold mb-4">Integrantes</h3>
-      <div className="flex flex-wrap gap-4">
-        {/* Avatares circulares */}
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="w-10 h-10 rounded-full bg-gradient-to-tr from-accent-green to-emerald-700 border-2 border-card-bg shadow-lg"
-          />
+    <div>
+      <h3 className="text-base font-bold text-white mb-3">Integrantes</h3>
+      <div className="grid grid-cols-3 gap-3">
+        {allMembers.map((member, i) => (
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <div
+              className="w-14 h-14 rounded-xl flex items-center justify-center text-base font-bold shrink-0 overflow-hidden bg-[#1e1e1e] border border-[#2a2a2a]"
+              style={{ backgroundColor: !member.avatar ? member.color : undefined }}
+            >
+              {member.avatar ? (
+                <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-black text-xl font-bold">{member.name.charAt(0)}</span>
+              )}
+            </div>
+            <div className="text-center">
+              <p className="text-white text-[11px] font-semibold leading-tight">{member.name}</p>
+              <p className="text-gray-500 text-[10px] leading-tight">{member.role}</p>
+            </div>
+          </div>
         ))}
       </div>
     </div>
