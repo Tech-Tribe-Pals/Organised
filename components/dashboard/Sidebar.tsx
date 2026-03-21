@@ -13,12 +13,14 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { growthProgress, growthStage, getActiveProject, getProjects, type Project } from '@/lib/projects';
+import { logout, useAuthSession } from '@/lib/auth-client';
 
 const Sidebar = () => {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const { user } = useAuthSession();
 
   // Load active project growth
   const loadGrowth = async () => {
@@ -83,6 +85,13 @@ const Sidebar = () => {
       isActive: pathname.startsWith('/nosotros')
     },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
+  };
+
+  const userInitial = user?.name?.charAt(0).toUpperCase() ?? 'U';
 
   return (
     <>
@@ -163,12 +172,16 @@ const Sidebar = () => {
           {expanded ? (
             <>
               <div className="flex items-center gap-3 px-2 py-2 mb-1">
-                <div className="w-8 h-8 rounded-lg bg-[#4ade80]/20 border border-[#4ade80]/30 flex items-center justify-center shrink-0 overflow-hidden">
-                  <img src="/avatars/federico.webp" alt="Federico Massolo" className="w-full h-full object-cover" />
+                <div className="w-8 h-8 rounded-lg bg-[#4ade80]/20 border border-[#4ade80]/30 flex items-center justify-center shrink-0 overflow-hidden text-xs font-bold text-[#4ade80]">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{userInitial}</span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs font-semibold truncate">Federico Massolo</p>
-                  <p className="text-gray-500 text-[10px] truncate">Admin</p>
+                  <p className="text-white text-xs font-semibold truncate">{user?.name ?? 'Usuario'}</p>
+                  <p className="text-gray-500 text-[10px] truncate">{user?.email ?? 'Sin sesion'}</p>
                 </div>
               </div>
               <Link
@@ -178,7 +191,7 @@ const Sidebar = () => {
                 <Settings size={16} className="shrink-0" />
                 <span>Ajustes</span>
               </Link>
-              <button className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-400/5 transition-all text-sm font-medium">
+              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-400/5 transition-all text-sm font-medium">
                 <LogOut size={16} className="shrink-0" />
                 <span>Cerrar sesión</span>
               </button>
@@ -187,11 +200,16 @@ const Sidebar = () => {
             <div className="flex flex-col items-center gap-1">
               <div
                 className="w-8 h-8 rounded-lg bg-[#4ade80]/20 border border-[#4ade80]/30 flex items-center justify-center shrink-0 overflow-hidden mb-1 cursor-pointer hover:border-[#4ade80]/60 transition-all"
-                title="Federico Massolo"
+                title={user?.name ?? 'Usuario'}
               >
-                <img src="/avatars/federico.webp" alt="Federico Massolo" className="w-full h-full object-cover" />
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-[#4ade80]">{userInitial}</span>
+                )}
               </div>
               <button
+                onClick={handleLogout}
                 title="Cerrar sesión"
                 className="flex items-center justify-center w-10 h-9 rounded-xl text-gray-500 hover:text-red-400 hover:bg-red-400/5 transition-all"
               >

@@ -31,7 +31,7 @@ const Navbar = () => {
               Iniciar sesión
             </Link>
             <Link
-              href="/signup"
+              href="/login"
               className="text-sm font-medium bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-md border border-white/10 transition-all"
             >
               Registrarse

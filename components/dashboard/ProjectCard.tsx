@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
-import { deleteProject } from "@/lib/projects";
+import { AuthRequiredError, deleteProject } from "@/lib/projects";
 
 interface TeamMember {
     name: string;
@@ -96,21 +96,30 @@ const ProjectCard = ({ id, name, image, pm, team, status, startDate, endDate }: 
                     </div>
                 )}
 
-                {pm?.name === "Federico Massolo" && (
-                    <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (window.confirm("¿Estás seguro que querés podar definitivamente este proyecto?")) {
-                                deleteProject(id);
+                <button
+                    onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.confirm("¿Estás seguro que querés podar definitivamente este proyecto?")) {
+                            try {
+                                await deleteProject(id);
+                            } catch (error) {
+                                console.error(error);
+                                if (error instanceof AuthRequiredError) {
+                                    alert("Necesitas iniciar sesion para eliminar proyectos.");
+                                    window.location.href = "/login";
+                                    return;
+                                }
+
+                                alert("No se pudo eliminar el proyecto.");
                             }
-                        }}
-                        className="absolute top-2 right-12 p-1.5 rounded-lg bg-black/60 text-red-400 border border-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 hover:text-red-300 z-10"
-                        title="Eliminar proyecto"
-                    >
-                        <Trash2 size={15} />
-                    </button>
-                )}
+                        }
+                    }}
+                    className="absolute top-2 right-12 p-1.5 rounded-lg bg-black/60 text-red-400 border border-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 hover:text-red-300 z-10"
+                    title="Eliminar proyecto"
+                >
+                    <Trash2 size={15} />
+                </button>
 
                 {/* PM avatar — top-right */}
                 {pm && (
