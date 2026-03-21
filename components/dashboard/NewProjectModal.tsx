@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { X, Search, UserPlus, Loader2, Github, Sprout, TreePine, Flower2, Check } from "lucide-react";
-import { addProject, generateId, type Priority, type Seed, type TeamMember } from "@/lib/projects";
+import { addProject, AuthRequiredError, generateId, type Priority, type Seed, type TeamMember } from "@/lib/projects";
+import { useAuthSession } from "@/lib/auth-client";
 
 // ── Seed type config ──────────────────────────────────────────────────────────
 const SEEDS: { id: Seed; emoji: React.ReactNode; label: string; desc: string; color: string }[] = [
@@ -61,6 +62,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function NewProjectModal({ onClose, onCreated }: Props) {
+    const { user } = useAuthSession();
     // Form state
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
@@ -120,6 +122,12 @@ export default function NewProjectModal({ onClose, onCreated }: Props) {
 
     async function handleSubmit() {
         if (!name.trim() || !startDate || !endDate) return;
+        if (!user) {
+            alert("Necesitas iniciar sesion para crear proyectos.");
+            window.location.href = "/login";
+            return;
+        }
+
         setSubmitting(true);
         try {
             await addProject({
@@ -133,9 +141,9 @@ export default function NewProjectModal({ onClose, onCreated }: Props) {
                 startDate,
                 endDate,
                 pm: {
-                    name: "Federico Massolo",
-                    username: "fmassolo",
-                    avatar: "/avatars/federico.webp",
+                    name: user.name,
+                    username: user.email.split("@")[0],
+                    avatar: user.avatarUrl ?? undefined,
                     color: "#4ade80"
                 },
                 team,
@@ -146,6 +154,12 @@ export default function NewProjectModal({ onClose, onCreated }: Props) {
             onClose();
         } catch (error) {
             console.error(error);
+            if (error instanceof AuthRequiredError) {
+                alert("Necesitas iniciar sesion para crear proyectos.");
+                window.location.href = "/login";
+                return;
+            }
+
             alert("Error al crear el proyecto");
         } finally {
             setSubmitting(false);

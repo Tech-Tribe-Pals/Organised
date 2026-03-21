@@ -1,5 +1,9 @@
-// ── Supabase Integration ──────────────────────────
-import { supabase } from './supabase';
+export class AuthRequiredError extends Error {
+    constructor(message = 'Necesitas iniciar sesion para gestionar proyectos.') {
+        super(message);
+        this.name = 'AuthRequiredError';
+    }
+}
 
 export interface TeamMember {
     name: string;
@@ -91,109 +95,121 @@ export function getMockInitialWeeks(): Week[] {
     return JSON.parse(JSON.stringify(DEFAULT_WEEKS));
 }
 
-// ── Supabase Operations ────────────────────────────
+function dispatchProjectsUpdated() {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('organiseed:projectsUpdated'));
+    }
+}
+
+class ApiError extends Error {
+    status: number;
+
+    constructor(message: string, status: number) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+    }
+}
+
+async function apiRequest<T>(input: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(input, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        ...init,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(init?.headers ?? {}),
+        },
+    });
+
+    if (!response.ok) {
+        let message = 'Request failed';
+        try {
+            const payload = await response.json();
+            message = payload.error ?? message;
+        } catch {
+            message = response.statusText || message;
+        }
+        throw new ApiError(message, response.status);
+    }
+
+    if (response.status === 204) {
+        return undefined as T;
+    }
+
+    return response.json() as Promise<T>;
+}
+
+// ── MongoDB Operations ─────────────────────────────
 
 export async function getProjects(): Promise<Project[]> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return [];
+    try {
+        return await apiRequest<Project[]>('/api/projects');
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+            return [];
+        }
 
-    const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
-
-    if (error) {
         console.error('Error fetching projects:', error);
         return [];
     }
-
-    // Map database fields (snake_case) to interface fields (camelCase) if necessary
-    // Assuming the table uses the same names or handles mapping
-    return (data || []).map(p => ({
-        ...p,
-        startDate: p.start_date,
-        endDate: p.end_date,
-        createdAt: p.created_at,
-        githubRepo: p.github_repo
-    })) as Project[];
 }
 
 export async function addProject(project: Project): Promise<void> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("No session found");
+    const payload: Project = {
+        ...project,
+        weeks: project.weeks?.length ? project.weeks : getMockInitialWeeks(),
+        notes: project.notes ?? [],
+        team: project.team ?? [],
+    };
 
-    if (!project.weeks || project.weeks.length === 0) {
-        project.weeks = getMockInitialWeeks();
-    }
-
-    const { error } = await supabase
-        .from('projects')
-        .insert({
-            id: project.id,
-            user_id: session.user.id,
-            name: project.name,
-            description: project.description,
-            category: project.category,
-            priority: project.priority,
-            seed: project.seed,
-            status: project.status,
-            start_date: project.startDate,
-            end_date: project.endDate,
-            pm: project.pm,
-            team: project.team,
-            weeks: project.weeks,
-            notes: project.notes || [],
-            github_repo: project.githubRepo,
-            created_at: new Date().toISOString()
+    try {
+        await apiRequest('/api/projects', {
+            method: 'POST',
+            body: JSON.stringify({ project: payload }),
         });
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+            throw new AuthRequiredError();
+        }
 
-    if (error) {
-        console.error('Error adding project:', error);
         throw error;
     }
 
-    window.dispatchEvent(new CustomEvent('organiseed:projectsUpdated'));
+    dispatchProjectsUpdated();
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<void> {
-    const dbUpdates: any = { ...updates };
-    
-    // Map camelCase to snake_case for DB
-    if (updates.startDate) dbUpdates.start_date = updates.startDate;
-    if (updates.endDate) dbUpdates.end_date = updates.endDate;
-    if (updates.githubRepo) dbUpdates.github_repo = updates.githubRepo;
-    
-    // Clean up camelCase keys that were mapped
-    delete dbUpdates.startDate;
-    delete dbUpdates.endDate;
-    delete dbUpdates.githubRepo;
+    try {
+        await apiRequest(`/api/projects/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ updates }),
+        });
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+            throw new AuthRequiredError();
+        }
 
-    const { error } = await supabase
-        .from('projects')
-        .update(dbUpdates)
-        .eq('id', id);
-
-    if (error) {
-        console.error('Error updating project:', error);
         throw error;
     }
-    
-    window.dispatchEvent(new CustomEvent('organiseed:projectsUpdated'));
+
+    dispatchProjectsUpdated();
 }
 
 export async function deleteProject(id: string): Promise<void> {
-    const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
+    try {
+        await apiRequest(`/api/projects/${id}`, {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+            throw new AuthRequiredError();
+        }
 
-    if (error) {
-        console.error('Error deleting project:', error);
         throw error;
     }
 
-    window.dispatchEvent(new CustomEvent('organiseed:projectsUpdated'));
+    dispatchProjectsUpdated();
 }
 
 export async function getActiveProject(): Promise<Project | null> {

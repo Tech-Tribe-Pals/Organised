@@ -1,54 +1,96 @@
 "use client";
-// import Link from "next/link";
-import Image from "next/image";
-import { supabase } from "@/lib/supabase";
 import { useState } from "react";
+
+import { login, lookupEmail, register } from "@/lib/auth-client";
+
+const DEFAULT_AVATAR = "/avatars/mitchell.webp";
+
+function formatNameFromEmail(email: string) {
+  const localPart = email.split("@")[0] ?? "Organiseed";
+  const cleaned = localPart.replace(/[._-]+/g, " ").trim();
+
+  if (!cleaned) {
+    return "Organiseed";
+  }
+
+  return cleaned
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [step, setStep] = useState<"email" | "password">("email");
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [submitting, setSubmitting] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState(DEFAULT_AVATAR);
+  const [displayName, setDisplayName] = useState("Organiseed");
 
-  // Esta función maneja el flujo inteligente
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Si estamos en el primer paso, solo validamos que haya un email y pasamos al siguiente
     if (step === "email") {
       if (email.includes("@")) {
-        setStep("password");
-      }
-      return;
-    }
+        setCheckingEmail(true);
 
-    // Si ya estamos en el paso de contraseña, intentamos Login o Registro
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+        try {
+          const result = await lookupEmail(email);
+          const nextMode = result.exists ? "login" : "register";
 
-    if (signInError) {
-      // Si el usuario no existe, Supabase devuelve este mensaje específico
-      if (signInError.message.includes("Invalid login credentials")) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (signUpError) {
-          alert(signUpError.message);
-        } else {
-          alert("¡Cuenta nueva! Te enviamos un correo de confirmación.");
+          setMode(nextMode);
+          setDisplayName(result.user?.name ?? (result.exists ? formatNameFromEmail(email) : "Organiseed"));
+          setAvatarSrc(result.user?.avatarUrl ?? DEFAULT_AVATAR);
+          setPassword("");
+          setStep("password");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "No se pudo verificar el email.";
+          alert(message);
+        } finally {
+          setCheckingEmail(false);
         }
-      } else {
-        alert(signInError.message);
       }
+
       return;
     }
 
-    // Si no hubo error, al dashboard
-    window.location.href = "/dashboard";
+    setSubmitting(true);
+
+    try {
+      if (mode === "login") {
+        await login(email, password);
+      } else {
+        await register(email, password);
+      }
+
+      window.location.href = "/";
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : mode === "login"
+          ? "No se pudo iniciar sesion."
+          : "No se pudo crear la cuenta.";
+
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleBackToEmail = () => {
+    setStep("email");
+    setMode("login");
+    setPassword("");
+    setAvatarSrc(DEFAULT_AVATAR);
+    setDisplayName("Organiseed");
+  };
+
+  const isPasswordStep = step === "password";
+  const isRegisterMode = mode === "register";
+  const currentButtonLabel = isPasswordStep ? (isRegisterMode ? "Registrar" : "Ingresar") : (checkingEmail ? "Verificando..." : "Continuar");
+  const currentHeading = isPasswordStep ? displayName : "Organiseed";
 
   return (
     <main className="min-h-screen bg-[#0f0f0f] flex items-center justify-center relative overflow-hidden p-6">
@@ -59,18 +101,16 @@ export default function LoginPage() {
 
       <div className="w-full max-w-[400px] z-10">
         <div className="flex flex-col items-center mb-10">
-          {/* Avatar dinámico: Solo se vuelve "vívido" en el paso de contraseña */}
-          <div className={`w-32 h-32 rounded-full border-4 border-[#181818] overflow-hidden mb-4 shadow-2xl transition-all duration-500 ${step === 'password' ? 'scale-110 shadow-green-500/20' : 'grayscale opacity-50'}`}>
-            <Image
-              src="/avatar-placeholder.jpg"
-              alt="Profile"
-              width={128}
-              height={128}
-              className="object-cover"
+          <div className={`w-32 h-32 rounded-full border-4 border-[#181818] overflow-hidden mb-4 shadow-2xl transition-all duration-500 ${isPasswordStep ? 'scale-110 shadow-green-500/20' : 'grayscale opacity-50'}`}>
+            <img
+              src={avatarSrc}
+              alt={currentHeading}
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
             />
           </div>
-          <h2 className={`text-xl font-medium tracking-wide transition-colors ${step === 'password' ? 'text-white' : 'text-gray-500'}`}>
-            {step === 'password' ? 'Mitchell' : 'Organiseed'}
+          <h2 className={`text-xl font-medium tracking-wide transition-colors ${isPasswordStep ? 'text-white' : 'text-gray-500'}`}>
+            {currentHeading}
           </h2>
         </div>
 
@@ -84,15 +124,14 @@ export default function LoginPage() {
               type="email"
               required
               value={email}
-              readOnly={step === "password"}
+              readOnly={isPasswordStep}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full bg-[#181818] border border-[#262626] rounded-md px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-all ${step === 'password' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full bg-[#181818] border border-[#262626] rounded-md px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-all ${isPasswordStep ? 'opacity-50 cursor-not-allowed' : ''}`}
               placeholder="tu@email.com"
             />
           </div>
 
-          {/* Campo de Contraseña: Solo aparece en el paso 2 */}
-          {step === "password" && (
+          {isPasswordStep && (
             <div className="space-y-2 animate-fade-in-up">
               <label className="text-xs uppercase tracking-widest text-gray-500 ml-1">
                 Contraseña
@@ -106,9 +145,12 @@ export default function LoginPage() {
                 className="w-full bg-[#181818] border border-[#262626] rounded-md px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-all"
                 placeholder="••••••••"
               />
+              <p className="text-[11px] text-gray-500 ml-1">
+                {isRegisterMode ? "No encontramos una cuenta. Creala con tu contraseña." : "Cuenta encontrada. Ingresá tu contraseña para continuar."}
+              </p>
               <button 
                 type="button"
-                onClick={() => setStep("email")}
+                onClick={handleBackToEmail}
                 className="text-[10px] text-gray-600 hover:text-green-500 block text-right mt-1 w-full text-right"
               >
                 ¿No es tu cuenta? Cambiar email
@@ -118,9 +160,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            disabled={submitting || checkingEmail}
             className="w-full bg-transparent border border-[#262626] hover:bg-white/5 text-gray-300 py-3 rounded-md transition-all font-medium mt-4 border-green-500/20"
           >
-            {step === "email" ? "Continuar" : "Ingresar"}
+            {submitting ? "Procesando..." : currentButtonLabel}
           </button>
         </form>
 

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getProjects, updateProject, type Project, type Week, type Note } from "@/lib/projects";
+import { AuthRequiredError, getProjects, updateProject, type Project, type Week, type Note } from "@/lib/projects";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { WeeklyList } from "@/components/dashboard/WeeklyList";
 import NotesSection from "@/components/dashboard/NotesSection";
@@ -59,12 +59,26 @@ export default function DashboardPage() {
 
   const handleWeeksChange = async (newWeeks: Week[]) => {
     setProject(prev => prev ? { ...prev, weeks: newWeeks } : prev);
-    await updateProject(project.id, { weeks: newWeeks });
+    try {
+      await updateProject(project.id, { weeks: newWeeks });
+    } catch (error) {
+      console.error(error);
+      if (error instanceof AuthRequiredError) {
+        router.push("/login");
+      }
+    }
   };
 
   const handleNotesChange = async (newNotes: Note[]) => {
     setProject(prev => prev ? { ...prev, notes: newNotes } : prev);
-    await updateProject(project.id, { notes: newNotes });
+    try {
+      await updateProject(project.id, { notes: newNotes });
+    } catch (error) {
+      console.error(error);
+      if (error instanceof AuthRequiredError) {
+        router.push("/login");
+      }
+    }
   };
 
   return (

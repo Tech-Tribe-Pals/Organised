@@ -1,16 +1,31 @@
-"use client"; // <--- Importante: esto lo hace Client Component
+"use client";
+
 import { useEffect } from "react";
-import { useRouter } from "next/navigation"; // <--- Usa siempre 'next/navigation'
+import { usePathname, useRouter } from "next/navigation";
+
+import { useAuthSession } from "@/lib/auth-client";
 
 export default function AuthRedirectHandler() {
   const router = useRouter();
+  const pathname = usePathname();
+  const { authenticated, loading } = useAuthSession();
 
   useEffect(() => {
-    // Si detecta el token en el hash, limpia la URL y redirige
-    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
-      router.replace("/dashboard");
+    if (loading) {
+      return;
     }
-  }, [router]);
 
-  return null; // Este componente no renderiza nada visual
+    const isAuthRoute = pathname === "/login" || pathname === "/signup";
+
+    if (!authenticated && !isAuthRoute) {
+      router.replace("/login");
+      return;
+    }
+
+    if (authenticated && isAuthRoute) {
+      router.replace("/");
+    }
+  }, [authenticated, loading, pathname, router]);
+
+  return null;
 }
