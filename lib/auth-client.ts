@@ -7,6 +7,8 @@ export interface SessionUser {
     email: string;
     name: string;
     avatarUrl: string | null;
+    githubLogin?: string | null;
+    githubUrl?: string | null;
     role: string;
 }
 

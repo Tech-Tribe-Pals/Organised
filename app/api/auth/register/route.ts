@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
                 email: user.email,
                 name: user.name,
                 avatarUrl: user.avatar_url ?? null,
+                githubLogin: user.github_login ?? null,
+                githubUrl: user.github_url ?? null,
                 role: user.role,
             },
         }, { status: 201 });
