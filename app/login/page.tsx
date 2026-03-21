@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Github } from "lucide-react";
 
 import { login, lookupEmail, register } from "@/lib/auth-client";
 
@@ -28,6 +29,8 @@ export default function LoginPage() {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState(DEFAULT_AVATAR);
   const [displayName, setDisplayName] = useState("Organiseed");
+  const [githubLogin, setGithubLogin] = useState<string | null>(null);
+  const [githubUrl, setGithubUrl] = useState<string | null>(null);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +46,8 @@ export default function LoginPage() {
           setMode(nextMode);
           setDisplayName(result.user?.name ?? (result.exists ? formatNameFromEmail(email) : "Organiseed"));
           setAvatarSrc(result.user?.avatarUrl ?? DEFAULT_AVATAR);
+          setGithubLogin(result.user?.githubLogin ?? null);
+          setGithubUrl(result.user?.githubUrl ?? null);
           setPassword("");
           setStep("password");
         } catch (error) {
@@ -85,6 +90,8 @@ export default function LoginPage() {
     setPassword("");
     setAvatarSrc(DEFAULT_AVATAR);
     setDisplayName("Organiseed");
+    setGithubLogin(null);
+    setGithubUrl(null);
   };
 
   const isPasswordStep = step === "password";
@@ -112,6 +119,26 @@ export default function LoginPage() {
           <h2 className={`text-xl font-medium tracking-wide transition-colors ${isPasswordStep ? 'text-white' : 'text-gray-500'}`}>
             {currentHeading}
           </h2>
+          {isPasswordStep && (
+            <div className="mt-3 min-h-10">
+              {githubLogin ? (
+                <a
+                  href={githubUrl ?? `https://github.com/${githubLogin}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-[11px] text-green-200"
+                >
+                  <Github size={13} />
+                  <span>GitHub detectado: @{githubLogin}</span>
+                </a>
+              ) : (
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#2b2b2b] bg-[#161616] px-3 py-1.5 text-[11px] text-gray-400">
+                  <Github size={13} />
+                  <span>{isRegisterMode ? "Sin perfil visible de GitHub. Se registra con avatar por defecto." : "Cuenta encontrada, pero GitHub no devolvio un perfil visible para este email."}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
