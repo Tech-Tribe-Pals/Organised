@@ -9,17 +9,6 @@ export class MongoConnectionError extends Error {
     }
 }
 
-const uri = (() => {
-    const value = process.env.MONGO_ATLAS_URI;
-
-    if (!value) {
-        throw new Error('Missing MongoDB connection string. Set MONGO_ATLAS_URI in your environment.');
-    }
-
-    return value;
-})();
-const dbName = process.env.MONGO_DB_NAME ?? 'organiseed';
-
 const options = {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -33,7 +22,25 @@ declare global {
     var mongoIndexesPromise: Promise<void> | undefined;
 }
 
+function getMongoUri() {
+    const value = process.env.MONGO_ATLAS_URI;
+
+    if (!value) {
+        throw new MongoConnectionError('Missing MongoDB connection string. Set MONGO_ATLAS_URI in your environment.');
+    }
+
+    return value;
+}
+
+function getMongoDbName() {
+    return process.env.MONGO_DB_NAME ?? 'organiseed';
+}
+
 function normalizeMongoConnectionError(error: unknown) {
+    if (error instanceof MongoConnectionError) {
+        return error;
+    }
+
     if (
         typeof error === 'object' &&
         error !== null &&
@@ -52,11 +59,15 @@ function normalizeMongoConnectionError(error: unknown) {
 
 function getMongoClientPromise() {
     if (!global.mongoClientPromise) {
-        const client = new MongoClient(uri, options);
-        global.mongoClientPromise = client.connect().catch((error) => {
-            global.mongoClientPromise = undefined;
+        try {
+            const client = new MongoClient(getMongoUri(), options);
+            global.mongoClientPromise = client.connect().catch((error) => {
+                global.mongoClientPromise = undefined;
+                throw normalizeMongoConnectionError(error);
+            });
+        } catch (error) {
             throw normalizeMongoConnectionError(error);
-        });
+        }
     }
 
     return global.mongoClientPromise;
@@ -64,7 +75,7 @@ function getMongoClientPromise() {
 
 export async function getMongoDb() {
     const connectedClient = await getMongoClientPromise();
-    return connectedClient.db(dbName);
+    return connectedClient.db(getMongoDbName());
 }
 
 export async function ensureMongoIndexes() {

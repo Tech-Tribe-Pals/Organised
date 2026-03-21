@@ -44,6 +44,8 @@ export interface AuthUser {
     email: string;
     name: string;
     avatarUrl: string | null;
+    githubLogin?: string | null;
+    githubUrl?: string | null;
     role: string;
 }
 
@@ -129,6 +131,8 @@ function toAuthUser(user: UserDocument): AuthUser {
         email: user.email,
         name: user.name,
         avatarUrl: user.avatar_url ?? null,
+        githubLogin: user.github_login ?? null,
+        githubUrl: user.github_url ?? null,
         role: user.role,
     };
 }
